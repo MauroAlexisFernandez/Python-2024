@@ -1,0 +1,336 @@
+# Enlazo el google sheet donde tengo consolidados todas las planillas para las tareas de limpieza y depuracion de datos
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+ID_PLANILLA = '1Y5rCDHfU8NYppzJyzIDYFHy52ge20LlJ0ROQQp8pB70'
+URL = f'https://docs.google.com/spreadsheets/d/{ID_PLANILLA}/gviz/tq?tqx=out:csv&sheet='
+df_ventas = pd.read_csv(URL + 'sales_in_Paraguay')
+df_ventas
+
+# Obtengo el nombre de las columnas del dataset ventas para realizar las tareas de limpieza y depuracion
+columnas=list(df_ventas.columns[1:])
+columnas
+
+
+df_ventas.dtypes
+
+
+# Eliminar la última fila
+df_ventas.drop(df_ventas.tail(1).index, inplace=True)
+
+print("\nDataFrame después de eliminar la última fila:")
+print(df_ventas)
+
+
+# Reemplazo los caracteres $ y . y las comas por el punto decimal
+# Cambio el tipo de datos de los campos montos a float
+# Cambio el tipo de datos de distribuidor a INT
+for col in columnas:
+  df_ventas[col]=df_ventas[col].str.replace("$","")
+  df_ventas[col]=df_ventas[col].str.replace(".","")
+  df_ventas[col]=df_ventas[col].str.replace(",",".")
+
+
+for col in columnas:
+  df_ventas[col] = df_ventas[col].astype(float)
+#df_ventas.distributor = df_ventas.distributor.fillna(0).astype(int)
+#df_ventas[df_ventas.columns[0]] = df_ventas[df_ventas.columns[0]].fillna(0).astype(int)
+
+df_ventas["distributor"] = df_ventas["distributor"].astype(int)
+
+df_ventas.dtypes
+
+
+# Compruebo que la hoja ventas no tenga duplicados
+df_ventas.duplicated().sum()
+
+
+df_ventas.rename(columns = {'distributor':'distributor_id'}, inplace = True)
+
+
+# Leo la hoja de exportaciones
+df_exportaciones = pd.read_csv(URL + 'exports_to_Paraguay')
+df_exportaciones
+
+
+# Cambio el tipo de dato del distribuidor por entero, limpio los puntos y los $ y reemplazo la coma por el punto
+# Cambio el tipo float de todas las columnas de montos de la hoja exportaciones
+
+
+columnas_exportaciones=list(df_exportaciones.columns[1:])
+columnas_exportaciones
+
+columns_to_drop = ['Unnamed: 13', 'Unnamed: 14', 'Columnas']
+
+# Dropear las columnas
+df_exportaciones = df_exportaciones.drop(columns=columns_to_drop)
+
+
+columnas_exportaciones=list(df_exportaciones.columns[1:])
+columnas_exportaciones
+
+
+df_exportaciones.dtypes
+
+
+df_exportaciones.sort_values('distributor')
+
+
+df_exportaciones.dtypes
+
+
+columnas_exportaciones=list(df_exportaciones.columns[1:])
+columnas_exportaciones
+
+
+for col in columnas_exportaciones:
+  df_exportaciones[col]=df_exportaciones[col].str.replace("$","")
+  df_exportaciones[col]=df_exportaciones[col].str.replace(".","")
+  df_exportaciones[col]=df_exportaciones[col].str.replace(",",".")
+
+for col in columnas_exportaciones:
+  df_exportaciones[col]=df_exportaciones[col].astype(float)
+
+
+df_exportaciones.dtypes
+
+
+pd.set_option('display.float_format', '{:.2f}'.format)
+df_exportaciones
+
+
+# Verifico si la hoja de exportaciones tiene duplicados y los borro, los ordeno por id de distribuidor
+df_exportaciones.duplicated().sum()
+df_exportaciones=df_exportaciones.drop_duplicates()
+display(df_exportaciones.sort_values('distributor'))
+
+
+df_exportaciones.duplicated().sum()
+
+
+df_exportaciones.rename(columns = {'distributor':'distributor_id'}, inplace = True)
+df_exportaciones
+
+df_exportaciones['distributor_id'] = df_exportaciones['distributor_id'].astype(str)
+
+
+df_exportaciones['distributor_id'] = df_exportaciones['distributor_id'].str.replace('.00', '')
+df_exportaciones['distributor_id'] = df_exportaciones['distributor_id'].str.replace('.', '')
+
+
+df_exportaciones['distributor_id'] = df_exportaciones['distributor_id'].astype(int)
+
+df_exportaciones
+
+
+# Leo la hoja localidades
+df_localidades = pd.read_csv(URL + 'locations_profiles')
+df_localidades
+
+
+# Borro las filas de localidades cuyo id sea igual mayor a cero
+df_localidades = df_localidades.loc[(df_localidades['id'] > 0) & (df_localidades['id'].notna())]
+df_localidades
+
+
+# Cambio el tipo de dato de la columna id de Localidades y le borro las columnas que no necesito
+df_localidades.id = df_localidades.id.fillna(0).astype(int)
+#df_localidades.drop(columns = df_localidades[['PYid', 'activities']], inplace = True)
+df_localidades
+
+
+# Leo la hoja de distribuidores, les cambio el tipo de id a int u borro las columnas que no nececito
+df_distribuidores = pd.read_csv(URL + 'distributor_profiles')
+df_distribuidores.drop(columns = df_distribuidores[['distributor activities', 'years in the construction market']], inplace = True)
+#df_distribuidores
+
+
+df_distribuidores = df_distribuidores[df_distribuidores['id'].notna()]
+
+
+df_distribuidores.rename(columns = {'id':'distributor_id'}, inplace = True)
+#df_distribuidores
+
+df_distribuidores.sort_values('distributor_id')
+
+df_distribuidores['distributor_id'] = df_distribuidores['distributor_id'].astype(str)
+
+df_distribuidores['distributor_id'] = df_distribuidores['distributor_id'].str.replace('.000', '')
+df_distribuidores['distributor_id'] = df_distribuidores['distributor_id'].str.replace('.', '')
+df_distribuidores
+
+df_distribuidores['distributor_id'] = df_distribuidores['distributor_id'].astype(int)
+df_distribuidores
+
+
+#Ya realizados los procesos de ANALISIS, LIMPIEZA Y MODELADO DE LOS DATOS, PROCEDO A HACER EL MERGE
+df_ventasimportaciones=pd.merge(df_ventas,df_exportaciones,on='distributor_id')
+df_ventasimportaciones
+
+
+df_ventasimportaciones=pd.merge(df_ventasimportaciones,df_distribuidores,on='distributor_id')
+df_ventasimportaciones
+
+df_ventasimportaciones.dtypes
+
+
+# CREO UN DF con el TOTAL DE VENTAS por PRODUCTOS
+columnas_ventas=list(df_ventas.columns[1:])
+columnas_ventas
+
+columnas_ventas = list(df_ventas.columns[1:])
+
+suma_ventas = df_ventas[columnas_ventas].sum()
+
+df_ventasumado = pd.DataFrame(suma_ventas, columns=['Total_Ventas'])
+
+df_ventasumado.index.name = 'Producto'
+
+print(df_ventasumado)
+
+
+columnas_ventas = list(df_ventas.columns[1:])
+
+suma_exportaciones = df_exportaciones[columnas_ventas].sum()
+
+df_exportacionessumado = pd.DataFrame(suma_exportaciones, columns=['Total_Exportaciones'])
+
+df_exportacionessumado.index.name = 'Producto'
+
+print(df_exportacionessumado)
+
+
+#EMPEZAMOS A ARMAR GRAFICOS Y A JUGAR CON LOS DATOS
+produ=columnas_ventas
+valores=df_ventasumado['Total_Ventas']
+plt.bar( produ , valores , color=[ 'blue'] , width=0.5)
+plt.xticks(rotation=90)
+plt.show()
+
+articulos=columnas_ventas
+valores=df_exportacionessumado['Total_Exportaciones']
+plt.bar( articulos , valores , color=[ 'green'] , width=0.5)
+plt.xticks(rotation=90)
+plt.show()
+
+df_comparativos=pd.merge(df_ventasumado,df_exportacionessumado,on='Producto')
+df_comparativos
+
+produ = columnas_ventas
+total_ventas = df_comparativos['Total_Ventas']
+total_exportaciones = df_comparativos['Total_Exportaciones']
+
+
+bar_width = 0.35
+index = np.arange(len(produ))
+
+fig, ax = plt.subplots()
+bar1 = ax.bar(index, total_ventas, bar_width, label='Total Ventas', color='blue')
+bar2 = ax.bar(index + bar_width, total_exportaciones, bar_width, label='Total Exportaciones', color='green')
+
+
+ax.set_xlabel('Productos')
+ax.set_ylabel('Valores')
+ax.set_title('Comparación de Ventas Totales y Exportaciones Totales por Producto')
+ax.set_xticks(index + bar_width / 2)
+ax.set_xticklabels(articulos, rotation=90)
+ax.legend()
+
+# va el gráfico
+plt.tight_layout()
+plt.show()
+
+
+#ANALISIS RATIO entre VENTAS Y EXPORTACIONES
+df_comparativos['Ratio_Ventas_Exportaciones'] = df_comparativos['Total_Ventas'] / df_comparativos['Total_Exportaciones']
+print("\nDataFrame con el ratio de ventas a exportaciones:")
+print(df_comparativos)
+
+produ=columnas_ventas
+ratios = df_comparativos['Ratio_Ventas_Exportaciones']
+
+# Creo el gráfico de barras
+plt.figure(figsize=(10, 6))
+plt.bar(articulos, ratios, color='purple', width=0.5)
+
+# trabajo las etiquetas y título
+plt.xlabel('Productos')
+plt.ylabel('Ratio Ventas/Exportaciones')
+plt.title('Ratio de Ventas a Exportaciones por Producto')
+plt.xticks(rotation=90)
+
+# ahi va el gráfico
+plt.tight_layout()
+plt.show()
+
+df_comparativos['Tasa de Cobertura'] = (df_comparativos['Total_Ventas'] / df_comparativos['Total_Exportaciones'])*100
+
+produ=columnas_ventas
+ratios = df_comparativos['Tasa de Cobertura']
+
+# Creo el gráfico de barras
+plt.figure(figsize=(10, 6))
+plt.bar(articulos, ratios, color='pink', width=0.5)
+
+# trabajo las etiquetas y título
+plt.xlabel('Productos')
+plt.ylabel('Tasa Comparativa')
+plt.title('Tasa Comparativa de Ventas a Exportaciones por Producto')
+plt.xticks(rotation=90)
+
+# ahi va el gráfico
+plt.tight_layout()
+plt.show()
+
+suma_total_vendida = df_comparativos['Total_Ventas'].sum()
+
+df_comparativos['Participacion_Mercado'] = (df_comparativos['Total_Ventas'] / suma_total_vendida) * 100
+
+produ=columnas_ventas
+participacion = df_comparativos['Participacion_Mercado']
+
+plt.xlabel('Participacion Mercado')
+plt.ylabel('Productos')
+plt.title('Participacion Mercado por Producto')
+plt.xticks(rotation=90)
+
+plt.barh( produ , participacion , color='cornflowerblue')
+
+plt.tight_layout()
+plt.show()
+
+#analizo ampliando decimales cual es el ratio de  los dos productos steel y bricks
+df_comparativos['Ratio_Ventas_Exportaciones']= df_comparativos['Ratio_Ventas_Exportaciones'].apply(lambda x: f"{x:.6f}")
+#df_comparativos
+
+
+#SE OBSERVA EL VALOR CERCANO A 0 POR LAS VENTAS MINIMAS EN DICHOS PRODUCTOS
+suma_ventas = df_ventas.groupby('distributor_id')[columnas_ventas].sum()
+df_ventasumadodistribuidor = suma_ventas.stack().reset_index()
+
+df_ventasumadodistribuidor.columns = ['distributor_id', 'Producto', 'Total_Ventas']
+
+df_ventasumadodistribuidor = pd.merge(df_ventasumadodistribuidor, df_distribuidores, on='distributor_id')
+
+#df_ventasumadodistribuidor
+
+df_localidades.rename(columns = {'id':'distributor_id'}, inplace = True)
+#df_localidades
+
+df_localidades_filtrado = df_localidades.loc[
+    df_localidades['activities'].str.contains('steel', case=False, na=False) |
+    df_localidades['activities'].str.contains('bricks', case=False, na=False)
+]
+
+df_localidades_filtrado
+
+df_distribuidor_localidades = pd.merge(df_distribuidores, df_localidades_filtrado, on='distributor_id')
+
+print(df_distribuidor_localidades)
+
+
+
+CONCLUSIONES El análisis de los ratios de ventas a exportaciones ha revelado que tanto steel como brick presentan un ratio cercano a 0. Esto indica que, para estos productos, hay minima venta registrada a pesar de haber exportaciones significativas. Este escenario plantea varias preocupaciones de tipo operacional y estratégico:La empresa CMM ha exportado gran cantidad de estos productos siendo que la venta en Paraguay es minima y que solo 2 localidades tienen actividades relacionadas a dichos productos, las que son Tobati y Villa Hayes.
+
+Finalmente, un ratio de ventas a exportaciones cercan6 a 0 es una señal clara de problemas subyacentes que requieren atención inmediata. Abordar estos problemas mediante la reevaluación de estrategias de mercado permitirá a la empresa aprovechar mejor las oportunidades globales y fortalecer su posición en el mercado internacional.
+
